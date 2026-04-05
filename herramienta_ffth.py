@@ -10,6 +10,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import substring
 from sklearn.cluster import KMeans
 import os
+from sklearn_extra.cluster import KMedoids
 
 class PlanificadorFibra:
     def __init__(self, ruta_geojson):
@@ -86,6 +87,10 @@ class PlanificadorFibra:
         
         grafo = ox.graph_from_polygon(poligono_wgs84, network_type='all')
         grafo_25830 = ox.project_graph(grafo, to_crs=self.srs_destino)
+        
+        # Sintaxis actualizada para OSMnx 2.0+
+        grafo_25830 = ox.convert.to_undirected(grafo_25830)
+        
         viales = ox.graph_to_gdfs(grafo_25830, nodes=False, edges=True)
         
         return grafo_25830, viales
@@ -111,6 +116,48 @@ class PlanificadorFibra:
             })
             
         return portales, gpd.GeoDataFrame(ctos, crs=portales.crs)
+
+    def agrupar_portales_topologico(self, gdf_portales, grafo, numero_ctos):
+        portales = gdf_portales.copy()
+        n_portales = len(portales)
+        matriz_distancias = np.zeros((n_portales, n_portales))
+        
+        nodos_proyectados = []
+        for _, portal in portales.iterrows():
+            nodo_cercano = ox.distance.nearest_nodes(grafo, portal.geometry.x, portal.geometry.y)
+            nodos_proyectados.append(nodo_cercano)
+            
+        for i in range(n_portales):
+            for j in range(n_portales):
+                if i != j:
+                    origen = nodos_proyectados[i]
+                    destino = nodos_proyectados[j]
+                    try:
+                        distancia = nx.shortest_path_length(grafo, origen, destino, weight='length')
+                    except nx.NetworkXNoPath:
+                        distancia = 999999
+                    matriz_distancias[i][j] = distancia
+                    
+        kmedoids = KMedoids(n_clusters=numero_ctos, metric='precomputed', random_state=42)
+        portales['id_cluster'] = kmedoids.fit_predict(matriz_distancias)
+        
+        ctos = []
+        indices_centros = kmedoids.medoid_indices_
+        for i, idx_centro in enumerate(indices_centros):
+            nodo_centro = nodos_proyectados[idx_centro]
+            x = grafo.nodes[nodo_centro]['x']
+            y = grafo.nodes[nodo_centro]['y']
+            
+            grupo = portales[portales['id_cluster'] == i]
+            
+            ctos.append({
+                'id_cluster': i,
+                'id_portal_cto': idx_centro,
+                'geometry': Point(x, y),
+                'num_portales': len(grupo)
+            })
+            
+        return portales, gpd.GeoDataFrame(ctos, crs=self.srs_destino)
 
     def calcular_red_distribucion(self, grafo, gdf_viales, gdf_ctos):
         nodo_olt = ox.distance.nearest_nodes(grafo, self.punto_olt.x, self.punto_olt.y)
@@ -303,7 +350,15 @@ if __name__ == "__main__":
     
     portales_base = planificador.descargar_direcciones_portales()
     grafo_vial, viales = planificador.obtener_red_vial()
-    portales_cluster, ctos = planificador.agrupar_portales_cto(portales_base, 12)
+
+    modo_agrupacion = "topologico"
+
+    n_cluster = 12
+
+    if modo_agrupacion == "espacial":
+        portales_cluster, ctos = planificador.agrupar_portales_cto(portales_base, n_cluster)
+    elif modo_agrupacion == "topologico":
+        portales_cluster, ctos = planificador.agrupar_portales_topologico(portales_base, grafo_vial, n_cluster)
     
     red_distribucion, rutas_troncales, tramos_cto, aristas_insercion_troncal = planificador.calcular_red_distribucion(grafo_vial, viales, ctos)
     red_acceso, rutas_acceso, tramos_portal, aristas_insercion_acceso = planificador.calcular_red_acceso(grafo_vial, viales, portales_cluster, ctos)
