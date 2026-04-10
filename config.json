@@ -1,0 +1,15 @@
+{
+    "proyecto": {
+        "archivo_qgis": "./out/pancar.gpkg",
+        "srs": "EPSG:25830",
+        "ruta_geojson": "./areas_cobertura/pancar.geojson"
+    },
+    "parametros": {
+        "agrupacion": {
+            "modo": "voronoi",
+            "capacidad_maxima": 16,
+            "distancia_maxima": 150,
+            "numero_ctos": 32
+        }
+    }
+}
