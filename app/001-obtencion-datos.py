@@ -1,18 +1,20 @@
-import json
 import geopandas as gpd
+from pathlib import Path
 from datos import GestorDatos
 from viales import GestorVial
 from agrupacion import AgrupadorCTO
 from enrutamiento import EnrutadorFibra
+from entorno import inicializar_entorno
 
-def cargar_configuracion(ruta_json):
-    with open(ruta_json, 'r') as archivo:
-        return json.load(archivo)
+config, rutas = inicializar_entorno()
 
-config = cargar_configuracion("config.json")
-archivo_qgis = config['proyecto']['archivo_qgis']
+for ruta_fase in [rutas["fase_0"], rutas["fase_1"], rutas["fase_2"]]:
+    archivo = Path(ruta_fase)
+    if archivo.exists():
+        archivo.unlink()
+
 srs = config['proyecto']['srs']
-ruta_geojson = config['proyecto']['ruta_geojson']
+ruta_geojson = rutas["geojson"]
 
 gestor_datos = GestorDatos(srs)
 gestor_vial = GestorVial(srs)
@@ -41,12 +43,13 @@ portales_asignados = portales_cluster[portales_cluster['id_cluster'] != -1].copy
 red_acc_preliminar, _, tramos_portal_preliminar, _ = enrutador.calcular_acceso(grafo_vial, viales, portales_asignados, ctos)
 gdf_acometidas_preliminar = gpd.GeoDataFrame(tramos_portal_preliminar, crs=srs)
 
+archivo_salida = rutas["fase_0"]
 if not portales_cluster.empty:
-    portales_cluster.to_file(archivo_qgis, layer="Portales_Demanda", driver="GPKG")
+    portales_cluster.to_file(archivo_salida, layer="Portales_Demanda", driver="GPKG")
 if not ctos.empty:
-    ctos.to_file(archivo_qgis, layer="Nodos_CTO", driver="GPKG")
-gdf_olt.to_file(archivo_qgis, layer="Nodo_OLT", driver="GPKG")
+    ctos.to_file(archivo_salida, layer="Nodos_CTO", driver="GPKG")
+gdf_olt.to_file(archivo_salida, layer="Nodo_OLT", driver="GPKG")
 if not red_acc_preliminar.empty:
-    red_acc_preliminar.to_file(archivo_qgis, layer="Acceso_Logico", driver="GPKG")
+    red_acc_preliminar.to_file(archivo_salida, layer="Acceso_Logico", driver="GPKG")
 if not gdf_acometidas_preliminar.empty:
-    gdf_acometidas_preliminar.to_file(archivo_qgis, layer="Acometidas_Privadas", driver="GPKG")
+    gdf_acometidas_preliminar.to_file(archivo_salida, layer="Acometidas_Privadas", driver="GPKG")

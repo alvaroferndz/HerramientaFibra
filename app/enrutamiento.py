@@ -117,8 +117,12 @@ class EnrutadorFibra:
                     else:
                         coords_finales.append((grafo.nodes[destino]['x'], grafo.nodes[destino]['y']))
                 
-                acceso.append({'geometry': LineString(coords_finales), 'id_cluster': id_cluster})
-                
+                acceso.append({
+                    'geometry': LineString(coords_finales), 
+                    'id_cluster': id_cluster,
+                    'id_portal': portal.name # Captura el índice original del portal del Catastro
+                })
+                                
                 punto_proy_portal = linea_carretera.interpolate(dist_proj)
                 tramo_portal = LineString([punto_proy_portal, portal.geometry])
                 tramos_fuera_grafo.append({

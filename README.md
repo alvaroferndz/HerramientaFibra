@@ -1,6 +1,4 @@
-# Herramienta de despliegue FFTH automatizado.
-
-Está en proceso, pero tiene buena pinta.
+![Header](./media/banner.png)
 
 # Pasos para utilizarlo.
 
@@ -12,12 +10,10 @@ Una vez tengamos el area de cobertura, especificamos en el código su directorio
 
 Una vez definido esto, ejecutamos el código y saldrá una ventana emergente que nos permitirá tener una vista previa de como quedará el despliegue. Si estamos contentos a priori, podremos abrir el archivo `.gpkg` en un programa SIG como QGIS para hacer una edición manual de los nodos, fibras o canalizaciones en el caso de ser necesario. Generalmente, es preferible partir de un buen despliegue automatizado inicial antes que realizar muchos ajustes en el SIG, no queda más remedio que probar a cambiar parámetros como el número de clusters o la posición del OLT hasta dar con una que se acerque lo máximo posible a la red deseada.
 
-# Como funciona.
-
 
 # Diario de desarrollo.
 
-Si usamos el algoritmo k-medias nos queda algo así.
+### Algoritmo K-medias y K-medioids
 
 ![Image](./media/despliegue-k-medias.png)
 
