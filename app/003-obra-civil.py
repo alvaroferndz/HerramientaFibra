@@ -43,7 +43,8 @@ tramos_extra = tramos_cto + tramos_portal
 gdf_acometidas = gpd.GeoDataFrame(tramos_extra, crs=srs)
 
 infraestructura = enrutador.calcular_infraestructura_fisica(grafo_vial, rutas_troncales, rutas_acceso, aristas_troncal, aristas_acceso)
+empalmes = enrutador.calcular_empalmes(grafo_vial, rutas_troncales)
 
-gestor_datos.exportar_geopackage(rutas["fase_2"], red_dist, red_acc, infraestructura, gdf_acometidas, ctos_revisados, portales_revisados, gdf_olt)
+gestor_datos.exportar_geopackage(rutas["fase_2"], red_dist, red_acc, infraestructura, gdf_acometidas, ctos_revisados, portales_revisados, gdf_olt, empalmes)
 
-visualizar_resultados(gdf_olt, viales, infraestructura, ctos_revisados)
+#visualizar_resultados(gdf_olt, viales, infraestructura, ctos_revisados)

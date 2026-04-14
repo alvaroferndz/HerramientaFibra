@@ -12,11 +12,12 @@ class EnrutadorFibra:
     def calcular_distribucion(self, grafo, gdf_viales, gdf_ctos):
         nodo_olt = ox.distance.nearest_nodes(grafo, self.punto_olt.x, self.punto_olt.y)
         distribucion = []
-        rutas_troncales = []
+        rutas_troncales = {}
         tramos_fuera_grafo = []
         aristas_insercion = []
         
         for _, cto in gdf_ctos.iterrows():
+            id_cluster = cto['id_cluster']
             distancias = gdf_viales.geometry.distance(cto.geometry)
             idx_segmento = distancias.idxmin()
             u, v, key = idx_segmento
@@ -37,7 +38,7 @@ class EnrutadorFibra:
                     nodo_optimo, pos_optimo = v, pos_v
                     
                 ruta_nodos = nx.shortest_path(grafo, nodo_olt, nodo_optimo, weight='length')
-                rutas_troncales.append(ruta_nodos)
+                rutas_troncales[id_cluster] = ruta_nodos
                 
                 coordenadas_linea = [(self.punto_olt.x, self.punto_olt.y)]
                 for i in range(len(ruta_nodos) - 1):
@@ -78,7 +79,7 @@ class EnrutadorFibra:
         tramos_fuera_grafo = []
         aristas_insercion = []
         
-        for _, portal in gdf_portales_cluster.iterrows():
+        for idx_portal, portal in gdf_portales_cluster.iterrows():
             id_cluster = portal['id_cluster']
             cto_destino = gdf_ctos[gdf_ctos['id_cluster'] == id_cluster].iloc[0]
             nodo_cto = ox.distance.nearest_nodes(grafo, cto_destino.geometry.x, cto_destino.geometry.y)
@@ -120,9 +121,9 @@ class EnrutadorFibra:
                 acceso.append({
                     'geometry': LineString(coords_finales), 
                     'id_cluster': id_cluster,
-                    'id_portal': portal.name # Captura el índice original del portal del Catastro
+                    'id_portal': portal.name 
                 })
-                                
+                
                 punto_proy_portal = linea_carretera.interpolate(dist_proj)
                 tramo_portal = LineString([punto_proy_portal, portal.geometry])
                 tramos_fuera_grafo.append({
@@ -138,11 +139,11 @@ class EnrutadorFibra:
         
         return gpd.GeoDataFrame(acceso, crs=self.srs_destino), rutas_acceso, tramos_fuera_grafo, aristas_insercion
 
-    def calcular_infraestructura_fisica(self, grafo, listas_nodos_troncales, listas_nodos_acceso, aristas_troncal_insercion, aristas_acceso_insercion):
+    def calcular_infraestructura_fisica(self, grafo, dict_rutas_troncales, listas_nodos_acceso, aristas_troncal_insercion, aristas_acceso_insercion):
         nx.set_edge_attributes(grafo, 0, 'fibras_troncal')
         nx.set_edge_attributes(grafo, 0, 'fibras_acceso')
         
-        for ruta in listas_nodos_troncales:
+        for ruta in dict_rutas_troncales.values():
             for i in range(len(ruta) - 1):
                 origen, destino = ruta[i], ruta[i+1]
                 if 0 in grafo[origen][destino]:
@@ -166,3 +167,66 @@ class EnrutadorFibra:
         gdf_aristas['total_fibras'] = gdf_aristas['fibras_troncal'] + gdf_aristas['fibras_acceso']
         
         return gdf_aristas[gdf_aristas['total_fibras'] > 0][['geometry', 'fibras_troncal', 'fibras_acceso', 'total_fibras', 'length']].copy()
+
+    def calcular_empalmes(self, grafo, dict_rutas_troncales):
+        transiciones = {}
+        fibras_pasantes = {}
+        fibras_terminantes = {}
+        
+        nodo_olt = ox.distance.nearest_nodes(grafo, self.punto_olt.x, self.punto_olt.y)
+
+        for id_cluster, ruta in dict_rutas_troncales.items():
+            for i in range(len(ruta)):
+                nodo = ruta[i]
+                
+                if nodo not in transiciones:
+                    transiciones[nodo] = set()
+                if nodo not in fibras_pasantes:
+                    fibras_pasantes[nodo] = []
+                if nodo not in fibras_terminantes:
+                    fibras_terminantes[nodo] = []
+                    
+                if i < len(ruta) - 1:
+                    # La fibra continúa hacia otro nodo
+                    siguiente = ruta[i+1]
+                    transiciones[nodo].add(siguiente)
+                    fibras_pasantes[nodo].append(id_cluster)
+                else:
+                    # La fibra termina en este nodo para alimentar la CTO
+                    fibras_terminantes[nodo].append(id_cluster)
+
+        empalmes = []
+        for nodo in transiciones.keys():
+            # Omitimos plantar un empalme en la central OLT para no ensuciar
+            if nodo == nodo_olt:
+                continue
+                
+            es_bifurcacion = len(transiciones[nodo]) > 1
+            es_sangrado = len(fibras_terminantes[nodo]) > 0 and len(fibras_pasantes[nodo]) > 0
+            
+            # Si el cable se divide en varias calles, o si soltamos fibra pero el mazo sigue
+            if es_bifurcacion or es_sangrado:
+                x = grafo.nodes[nodo]['x']
+                y = grafo.nodes[nodo]['y']
+                todas_fibras = fibras_pasantes[nodo] + fibras_terminantes[nodo]
+                
+                if es_bifurcacion and es_sangrado:
+                    tipo = "Bifurcación y Sangrado"
+                elif es_bifurcacion:
+                    tipo = "Bifurcación"
+                else:
+                    tipo = "Sangrado"
+                
+                empalmes.append({
+                    'id_nudo': nodo,
+                    'tipo': tipo,
+                    'fibras_involucradas': str(todas_fibras),
+                    'total_fibras_entrantes': len(todas_fibras),
+                    'rutas_salientes': len(transiciones[nodo]),
+                    'geometry': Point(x, y)
+                })
+
+        if not empalmes:
+            return gpd.GeoDataFrame(columns=['id_nudo', 'tipo', 'fibras_involucradas', 'total_fibras_entrantes', 'rutas_salientes', 'geometry'], crs=self.srs_destino)
+            
+        return gpd.GeoDataFrame(empalmes, crs=self.srs_destino)

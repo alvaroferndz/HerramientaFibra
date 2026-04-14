@@ -1,47 +1,95 @@
-![Header](./media/banner.png)
+# 🌐 Planificador Automatizado de Redes FTTH
 
-# Pasos para utilizarlo.
+Un motor de diseño lógico y físico para redes de fibra óptica hasta el hogar (FTTH). Esta herramienta automatiza el flujo de trabajo completo de la ingeniería de planta externa (OSP), desde la adquisición topográfica hasta el cálculo dinámico del presupuesto óptico, minimizando el despliegue de cableado y optimizando los recursos.
 
-Primero debemos extraer el area de cobertura deseada en un geojson y establecer el punto del OLT. Personalmente, me gusta la página [geojson.io](https://geojson.io/next/). Se define un polígono junto a un punto y se copia la salida del archivo en un archivo geojson, tal y como se ve en la figura. [Aquí](https://github.com/mapbox/geojson.io) se puede encontrar el repositorio del proyecto, gracias a sus creadores.
+---
 
-![Image](./media/geojson.png)
+## 🚀 Características Principales
 
-Una vez tengamos el area de cobertura, especificamos en el código su directorio y el nombre y directorio del archivo de salida. Personalmente me gusta tener ambos en carpetas separadas `areas_cobertura` y `out` respectivamente.
+* **Integración Catastral Automática:** Conexión directa con el servicio WFS del Catastro para la extracción de portales y unidades inmobiliarias.
+* **Topología Real (OSMnx):** Extracción y enrutamiento sobre el grafo vial real extraído de OpenStreetMap, diferenciando nodos topológicos de vértices geométricos.
+* **Detección Inteligente de Empalmes:** Identificación autónoma de puntos de bifurcación y sangrado de mazo topológico para la ubicación precisa de cajas de empalme/torpedos.
+* **Cálculo de Atenuación Dinámico:** Generación de un libro Excel nativo con tablas de datos y fórmulas paramétricas inyectadas para el cálculo del balance óptico en tiempo real.
+* **Salida GIS Preparada:** Generación de archivos GeoPackage (.gpkg) limpios y versionados, listos para su edición e inspección visual en QGIS.
 
-Una vez definido esto, ejecutamos el código y saldrá una ventana emergente que nos permitirá tener una vista previa de como quedará el despliegue. Si estamos contentos a priori, podremos abrir el archivo `.gpkg` en un programa SIG como QGIS para hacer una edición manual de los nodos, fibras o canalizaciones en el caso de ser necesario. Generalmente, es preferible partir de un buen despliegue automatizado inicial antes que realizar muchos ajustes en el SIG, no queda más remedio que probar a cambiar parámetros como el número de clusters o la posición del OLT hasta dar con una que se acerque lo máximo posible a la red deseada.
+---
 
+## 🏗️ Arquitectura y Fases del Despliegue
 
-# Diario de desarrollo.
+El sistema está orquestado en cuatro fases secuenciales independientes, lo que permite la intervención manual o la revisión técnica entre cada paso sin romper el flujo de trabajo.
 
-### Algoritmo K-medias y K-medioids
+### Fase 0: Adquisición y Agrupación (`000-obtencion-datos.py`)
+Lee el polígono de diseño base y la central OLT desde un archivo GeoJSON. Extrae la cartografía vial, descarga los portales y ejecuta algoritmos de *clustering* paramétrico (espacial, topológico o de Voronoi) para definir las áreas de influencia geométrica de cada Caja Terminal Óptica (CTO).
 
-![Image](./media/despliegue-k-medias.png)
+### Fase 1: Optimización Geométrica (`001-optimizar-ctos.py`)
+Abandona los cruces de calles estrictos para proyectar matemáticamente la posición de las CTOs sobre el trazado asfáltico (vértices geométricos). Ubica la CTO en el centro de carga de la calle curva o segmento lineal para minimizar los metros totales de acometidas privadas.
 
-El problema es que ciertos nodos que se encuentran cerca en línea recta, comparten clúster, estando los caminos hacia estos demasiado lejos, además si se hace de esta manera no se hace una canalización eficiente de la red troncal porque las canalizaciones públicas irían en algunos casos en dirección contraria a la red troncal, sumando metros haciendo esa "U", además de perjudicar la calidad de la señal al hacer un giro de 180 grados.
+### Fase 2: Obra Civil y Enrutamiento (`002-obra-civil.py`)
+Despliega el árbol de distribución. Calcula las rutas de menor esfuerzo desde la OLT hasta los clústeres (red troncal) y desde las CTOs a los portales (red de dispersión). Analiza el flujo de las fibras por la red para plantar cajas de empalme donde el cable físico se divide.
 
-Sigue habiendo problemas de solapamiento en los clústeres en la elección de grupos según las carreteras, como se ve en la foto de abajo. Además, hay que poner un tope al número máximo de usuarios que puede abastecer un único CTO porque el algoritmo tal y como está reparte la carga fatal. 
+### Fase 3: Presupuesto Óptico (`003-exportar-hoja-de-calculo.py`)
+Consolida las métricas espaciales en un modelo de datos estructurado. Exporta un Excel paramétrico que evalúa la atenuación extrema a extremo teniendo en cuenta longitud de fibra, conectores, pérdidas teóricas por splitters (según altas potenciales) y saltos de empalme.
 
+A parte se ofrece la opción de ejecutar todo el proyecto a la vez para pruebas iniciales.
 
-![Image](./media/problema_solapamiento_arriba_entre_clusters_verde_y_cian.png)
+---
 
-### Híbrido Voronoi topológico - K medias
+## 📂 Estructura del Proyecto
 
-Cambio de algoritmo a otro bastante extraño y de nicho pero que funciona bastante bien. Es un Voronoi, pero en vez de ser espacial, es topológico, osea que se propaga por la red que interconecta los nodos entre ellos.
+```text
+📦 Planificador-FTTH
+ ┣ 📂 app
+ ┃ ┣ 📜 00-despliegue-completo.py     # Orquestador principal
+ ┃ ┣ 📜 001-obtencion-datos.py        # Adquisición y clustering
+ ┃ ┣ 📜 002-optimizar-ctos.py         # Ajuste geométrico de nodos
+ ┃ ┣ 📜 003-obra-civil.py             # Enrutamiento de planta externa
+ ┃ ┣ 📜 004-exportar-hoja-de-calculo.py # Generador del modelo Excel
+ ┃ ┣ 📜 agrupacion.py
+ ┃ ┣ 📜 datos.py
+ ┃ ┣ 📜 enrutamiento.py
+ ┃ ┣ 📜 entorno.py                    # Gestor de rutas dinámico
+ ┃ ┗ 📜 viales.py
+ ┣ 📂 out                             # Directorio autogenerado de resultados
+ ┃ ┗ 📂 [nombre_proyecto]
+ ┃   ┣ 🗺️ [nombre]_00_datos.gpkg
+ ┃   ┣ 🗺️ [nombre]_01_ctos.gpkg
+ ┃   ┣ 🗺️ [nombre]_02_obra.gpkg
+ ┃   ┗ 📊 [nombre]_resumen.xlsx
+ ┣ 📜 config.json                     # Parámetros de diseño del despliegue
+ ┗ 📜 README.md
+```
 
-La ventaja de usar este algoritmo frente a otros como k-medioids, k-means o Dijisktra, es que aparte de respetar la distancia topológica más corta hacia los CTOS, evita que se entrelacen. Al funcionar propagando un frente de ondas desde el cto en todas direcciones, en el momento que dos frentes colisionan, se para la propagación, así que nunca se cruzan.
+---
 
-Abajo se adjunta una captura de un despliegue totalmente automatizado sin cambios manuales.
+## 💻 Requisitos e Instalación
 
-![Image](./media/voronoi-network-despliegue.png)
+El proyecto requiere Python 3.9 o superior y un entorno virtual configurado con librerías de análisis geoespacial.
 
-Como se puede ver, los clústers están bien recogidos y aislados, con distancias a sus nodos coherentes.
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/alvaroferndz/HerramientaFibra.git
+   cd planificador-ftth
+   ```
+2. Crea y activa tu entorno virtual:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # En Windows: .venv\Scripts\activate
+   ```
+3. Instala las dependencias core:
+   ```bash
+   pip install requirements.txt
+   ```
 
-No todo es perfecto, en cuanto a los fallos veo que, por ejemplo, abajo hay un cto naranja aislado dentro del clúster negro. Esto ocurre porque la elección de los CTO se hace ejecutando el algoritmo k-medias tradicional.
+---
 
-Otro "fallo" por ejemplo, en el cluster verde de la izquierda, el cto está muy a la izquierda, provocando que la distancia que deben recorrer las fibras es mayor que si se encontrase en el centro o a la derecha.
+## ⚙️ Uso Básico
 
-El fallo más significativo de este método es que tienes un control muy pobre de la demanda de portales por cada CTO.
+1. Configura tu polígono de actuación guardando un polígono y un punto (la OLT) en un archivo `.geojson`.
+2. Actualiza la ruta en `config.json`.
+3. Ejecuta el orquestador general para lanzar todas las fases en cadena y generar un proyecto desde cero:
 
-La solución a estos problemas, aunque suene un poco a cuento de la vieja, es modificar los clústers a mano, tanto para optimizar la posición del CTO, como cambiar el ``id_cluster`` de algunos portales, como eliminar o añadir algún que otro CTO. 
+```bash
+python app/00-despliegue-completo.py
+```
 
-Por supuesto que se podría refinar el algoritmo, pero siempre va a haber algún caso que lo rompa o que requiera igualmente de cierto retoque por las carácteristicas del proyecto, así que como por ahora parece funcionar bien, se deja así porque los retoques manuales resultan mínimos.
+*Nota: Si prefieres ajustar manualmente las posiciones topológicas en QGIS, puedes ejecutar los scripts secuencialmente. Guarda tus cambios en el `.gpkg` de la fase correspondiente antes de lanzar el siguiente script.*

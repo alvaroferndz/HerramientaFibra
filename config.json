@@ -9,7 +9,7 @@
             "modo": "voronoi",
             "capacidad_maxima": 16,
             "distancia_maxima": 150,
-            "numero_ctos": 96
+            "numero_ctos": 40
         }
     }
 }

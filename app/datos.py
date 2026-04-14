@@ -76,7 +76,7 @@ class GestorDatos:
         
         return gdf_recortado.drop_duplicates(subset=['geometry'])
 
-    def exportar_geopackage(self, archivo_salida, gdf_distribucion, gdf_acceso, gdf_infraestructura, gdf_acometidas, gdf_ctos, gdf_portales, gdf_olt):
+    def exportar_geopackage(self, archivo_salida, gdf_distribucion, gdf_acceso, gdf_infraestructura, gdf_acometidas, gdf_ctos, gdf_portales, gdf_olt, gdf_empalmes=None):
         if not gdf_distribucion.empty:
             gdf_distribucion.to_file(archivo_salida, layer="Distribucion_Logica", driver="GPKG")
         if not gdf_acceso.empty:
@@ -85,6 +85,8 @@ class GestorDatos:
             gdf_infraestructura.to_file(archivo_salida, layer="Canalizacion_Publica", driver="GPKG")
         if not gdf_acometidas.empty:
             gdf_acometidas.to_file(archivo_salida, layer="Acometidas_Privadas", driver="GPKG")
+        if gdf_empalmes is not None and not gdf_empalmes.empty:
+            gdf_empalmes.to_file(archivo_salida, layer="Cajas_Empalme", driver="GPKG")
             
         gdf_olt.to_file(archivo_salida, layer="Nodo_OLT", driver="GPKG")
         gdf_ctos.to_file(archivo_salida, layer="Nodos_CTO", driver="GPKG")
