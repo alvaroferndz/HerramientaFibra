@@ -68,7 +68,7 @@ El proyecto requiere Python 3.9 o superior y un entorno virtual configurado con 
 1. Clona el repositorio:
    ```bash
    git clone https://github.com/alvaroferndz/HerramientaFibra.git
-   cd planificador-ftth
+   cd HerramientaFibra
    ```
 2. Crea y activa tu entorno virtual:
    ```bash
