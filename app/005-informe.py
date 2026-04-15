@@ -6,31 +6,29 @@ from entorno import inicializar_entorno
 from datos import GestorDatos
 from viales import GestorVial
 
-# --- 1. CONFIGURACIÓN Y CARGA DE DATOS ---
 config, rutas = inicializar_entorno()
 archivo_excel = rutas["excel"]
 directorio_base = Path(rutas["fase_0"]).parent
 srs_proyecto = config['proyecto']['srs']
 
-# Extracción dinámica del nombre del proyecto
 nombre_proyecto = Path(rutas["geojson"]).stem.replace('_', ' ').replace('-', ' ').title()
-print(f"Generando Informe Ejecutivo para: {nombre_proyecto}")
+print(f"Generando Informe Maestro para: {nombre_proyecto}")
 
-# Carga dinámica del fondo de calles unificando el CRS
 gestor_datos = GestorDatos(srs_proyecto)
 gestor_vial = GestorVial(srs_proyecto)
 
-print("Procesando cartografía y descargando viales...")
+# --- 1. PREPARACIÓN DE CARTOGRAFÍA ---
+print("Sincronizando capas y descargando fondo vial...")
 area_diseno, poligono_base, _, _ = gestor_datos.cargar_area_diseno(rutas["geojson"])
 _, viales = gestor_vial.obtener_red_vial(poligono_base)
 
-# Carga de las capas finales del despliegue (ya proyectadas correctamente)
 portales = gpd.read_file(rutas["fase_2"], layer="Portales_Demanda")
 ctos = gpd.read_file(rutas["fase_2"], layer="Nodos_CTO")
 olt = gpd.read_file(rutas["fase_2"], layer="Nodo_OLT")
 troncal = gpd.read_file(rutas["fase_2"], layer="Distribucion_Logica")
 acceso = gpd.read_file(rutas["fase_2"], layer="Acceso_Logico")
 infraestructura = gpd.read_file(rutas["fase_2"], layer="Canalizacion_Publica")
+acometidas = gpd.read_file(rutas["fase_2"], layer="Acometidas_Privadas")
 
 try:
     empalmes = gpd.read_file(rutas["fase_2"], layer="Cajas_Empalme")
@@ -39,62 +37,63 @@ except Exception:
     empalmes = gpd.GeoDataFrame()
     cant_empalmes = 0
 
+# --- 2. RENDERIZADO CARTOGRÁFICO (5 MAPAS) ---
+print("Renderizando cartografía técnica...")
+estilos_mapa = {'figsize': (12, 10), 'dpi': 300}
 
-# --- 2. RENDERIZADO AUTOMÁTICO DE MAPAS (PNG) ---
-print("Generando capturas cartográficas...")
+def guardar_mapa(fig, nombre):
+    fig.savefig(directorio_base / nombre, bbox_inches='tight', dpi=estilos_mapa['dpi'])
+    plt.close(fig)
 
-# Mapa 1: Área de Despliegue
-ruta_img_area = directorio_base / "area_despliegue.png"
-fig, ax = plt.subplots(figsize=(12, 10))
-viales.plot(ax=ax, color='#e0e0e0', linewidth=1, zorder=1)
-area_diseno[area_diseno.geometry.type == 'Polygon'].plot(ax=ax, color='none', edgecolor='black', linewidth=2.5, zorder=2)
-portales.plot(ax=ax, color='#0056b3', markersize=15, alpha=0.6, zorder=3)
-olt.plot(ax=ax, color='#8e44ad', marker='s', markersize=150, edgecolor='black', zorder=4)
-ax.axis('off')
-plt.savefig(ruta_img_area, dpi=300, bbox_inches='tight')
-plt.close()
+# Mapa 1: Área General
+fig, ax = plt.subplots(figsize=estilos_mapa['figsize'])
+viales.plot(ax=ax, color='#e0e0e0', linewidth=1); area_diseno.plot(ax=ax, color='none', edgecolor='black', linewidth=2)
+portales.plot(ax=ax, color='#0056b3', markersize=15, alpha=0.5); olt.plot(ax=ax, color='#8e44ad', marker='s', markersize=120)
+ax.axis('off'); guardar_mapa(fig, "area_despliegue.png")
 
-# Mapa 2: Distribución Troncal
-ruta_img_troncal = directorio_base / "distribucion_troncal.png"
-fig, ax = plt.subplots(figsize=(12, 10))
-viales.plot(ax=ax, color='#f0f0f0', linewidth=1, zorder=1)
-troncal.plot(ax=ax, color='#e67e22', linewidth=2.5, zorder=2)
-ctos.plot(ax=ax, color='#16a085', marker='^', markersize=80, edgecolor='black', zorder=3)
-olt.plot(ax=ax, color='#8e44ad', marker='s', markersize=150, edgecolor='black', zorder=4)
-if not empalmes.empty:
-    empalmes.plot(ax=ax, color='#c0392b', marker='*', markersize=120, edgecolor='white', zorder=5)
-ax.axis('off')
-plt.savefig(ruta_img_troncal, dpi=300, bbox_inches='tight')
-plt.close()
+# Mapa 2: Red Troncal
+fig, ax = plt.subplots(figsize=estilos_mapa['figsize'])
+viales.plot(ax=ax, color='#f0f0f0', linewidth=1); troncal.plot(ax=ax, color='#e67e22', linewidth=2.5)
+ctos.plot(ax=ax, color='#16a085', marker='^', markersize=80); olt.plot(ax=ax, color='#8e44ad', marker='s', markersize=120)
+if not empalmes.empty: empalmes.plot(ax=ax, color='#c0392b', marker='*', markersize=100)
+ax.axis('off'); guardar_mapa(fig, "distribucion_troncal.png")
 
-# Mapa 3: Acceso Lógico
-ruta_img_acceso = directorio_base / "acceso_logico.png"
-fig, ax = plt.subplots(figsize=(12, 10))
-viales.plot(ax=ax, color='#f0f0f0', linewidth=1, zorder=1)
-acceso.plot(ax=ax, color='#3498db', linewidth=1, alpha=0.7, zorder=2)
-ctos.plot(ax=ax, color='#16a085', marker='^', markersize=80, edgecolor='black', zorder=3)
-portales.plot(ax=ax, color='#2c3e50', markersize=10, zorder=4)
-ax.axis('off')
-plt.savefig(ruta_img_acceso, dpi=300, bbox_inches='tight')
-plt.close()
+# Mapa 3: Red de Acceso
+fig, ax = plt.subplots(figsize=estilos_mapa['figsize'])
+viales.plot(ax=ax, color='#f0f0f0', linewidth=1); acceso.plot(ax=ax, color='#3498db', linewidth=1, alpha=0.7)
+ctos.plot(ax=ax, color='#16a085', marker='^', markersize=80); portales.plot(ax=ax, color='#2c3e50', markersize=8)
+ax.axis('off'); guardar_mapa(fig, "acceso_logico.png")
 
-# Mapa 4: Obra Civil
-ruta_img_obra = directorio_base / "obra_civil.png"
-fig, ax = plt.subplots(figsize=(12, 10))
-viales.plot(ax=ax, color='#f0f0f0', linewidth=1, zorder=1)
-infraestructura.plot(ax=ax, column='total_fibras', cmap='YlOrRd', linewidth=3, legend=True, zorder=2)
-ctos.plot(ax=ax, color='black', marker='^', markersize=50, zorder=3)
-olt.plot(ax=ax, color='#8e44ad', marker='s', markersize=150, edgecolor='black', zorder=4)
-ax.axis('off')
-plt.savefig(ruta_img_obra, dpi=300, bbox_inches='tight')
-plt.close()
+# Mapa 4: Densidad de Fibra (Obra Civil)
+fig, ax = plt.subplots(figsize=estilos_mapa['figsize'])
+viales.plot(ax=ax, color='#f0f0f0', linewidth=1)
+infraestructura.plot(ax=ax, column='total_fibras', cmap='YlOrRd', linewidth=3, legend=True)
+ax.axis('off'); guardar_mapa(fig, "obra_civil.png")
+
+# Mapa 5: Tipos de Instalación Constructiva
+print("Generando mapa de métodos constructivos...")
+fig, ax = plt.subplots(figsize=estilos_mapa['figsize'])
+viales.plot(ax=ax, color='#f0f0f0', linewidth=1)
+red_fisica = pd.concat([infraestructura, acometidas], ignore_index=True)
+colores_inst = {1: '#3498db', 2: '#e74c3c', 3: '#2ecc71', 4: '#9b59b6'}
+labels_inst = {1: 'Aérea (Poste)', 2: 'Zanja (Soterrado)', 3: 'Existente', 4: 'Fachada'}
+
+for tipo, color in colores_inst.items():
+    subset = red_fisica[red_fisica['tipo_instalacion'] == tipo]
+    if not subset.empty:
+        subset.plot(ax=ax, color=color, linewidth=2.5, label=labels_inst[tipo])
+
+ax.legend(title="Método Constructivo", loc='lower right', fontsize=10)
+ax.axis('off'); guardar_mapa(fig, "tipos_instalacion.png")
 
 
-# --- 3. EXTRACCIÓN DE MÉTRICAS DEL EXCEL ---
-print("Extrayendo métricas y presupuesto...")
-
-# Lectura basada en nombres de columnas para evitar fallos por desplazamiento
+# --- 3. EXTRACCIÓN DE DATOS Y CÁLCULOS ---
+print("Extrayendo métricas financieras y calculando materiales...")
 df_analisis = pd.read_excel(archivo_excel, sheet_name='Analisis_Fibra', skiprows=6)
+col_atenuacion = [c for c in df_analisis.columns if 'Atenuacion' in c][-1]
+atenuacion_max = df_analisis[col_atenuacion].max()
+atenuacion_media = df_analisis[col_atenuacion].mean()
+
 total_ctos = df_analisis['ID_CTO'].dropna().nunique()
 total_portales = df_analisis['Portales_Cubiertos'].sum()
 fibra_troncal = df_analisis['Fibra_Troncal_m'].sum()
@@ -102,29 +101,61 @@ fibra_acceso = df_analisis['Fibra_Acceso_Total_m'].sum()
 fibra_total = fibra_troncal + fibra_acceso
 dist_max = df_analisis['Total_OLT_a_Portal_m'].max()
 dist_min = df_analisis['Total_OLT_a_Portal_m'].min()
-dist_media = df_analisis['Total_OLT_a_Portal_m'].mean()
 
-# Lectura de la hoja de costes
-df_precios = pd.read_excel(archivo_excel, sheet_name='Resumen_Costes', header=None)
+# Precios del Excel
+df_precios = pd.read_excel(archivo_excel, sheet_name='Mediciones_y_Costes', header=None)
 precio_fibra = df_precios.iloc[2, 1]
 precio_cto = df_precios.iloc[3, 1]
 precio_empalme = df_precios.iloc[4, 1]
 precio_conector = df_precios.iloc[5, 1]
+precio_aereo = df_precios.iloc[6, 1]
+precio_zanja = df_precios.iloc[7, 1]
+precio_existente = df_precios.iloc[8, 1]
+precio_fachada = df_precios.iloc[9, 1]
 
-df_costes = pd.read_excel(archivo_excel, sheet_name='Resumen_Costes', skiprows=7)
-cant_fibra = df_costes.loc[df_costes['Concepto'].str.contains('Fibra', na=False, case=False), 'Cantidad'].values[0]
-cant_ctos = df_costes.loc[df_costes['Concepto'].str.contains('CTO', na=False, case=False), 'Cantidad'].values[0]
-cant_empalmes = df_costes.loc[df_costes['Concepto'].str.contains('Empalme', na=False, case=False), 'Cantidad'].values[0]
-cant_conectores = df_costes.loc[df_costes['Concepto'].str.contains('Conector', na=False, case=False), 'Cantidad'].values[0]
+# Cantidades Físicas
+cant_fibra = fibra_total
+cant_ctos = total_ctos
+cant_empalmes = cant_empalmes
+cant_conectores = len(acceso) * 2
 
-sub_fibra = cant_fibra * precio_fibra
-sub_cto = cant_ctos * precio_cto
-sub_empalme = cant_empalmes * precio_empalme
-sub_conector = cant_conectores * precio_conector
-coste_total = sub_fibra + sub_cto + sub_empalme + sub_conector
+def sumar_tipo(cod):
+    if red_fisica.empty: return 0
+    return red_fisica[red_fisica['tipo_instalacion'] == cod].geometry.length.sum()
+
+cant_aereo = sumar_tipo(1)
+cant_zanja = sumar_tipo(2)
+cant_existente = sumar_tipo(3)
+cant_fachada = sumar_tipo(4)
+
+# Subtotales Económicos
+sub_optico = (cant_fibra * precio_fibra) + (cant_ctos * precio_cto) + (cant_empalmes * precio_empalme) + (cant_conectores * precio_conector)
+sub_civil = (cant_aereo * precio_aereo) + (cant_zanja * precio_zanja) + (cant_existente * precio_existente) + (cant_fachada * precio_fachada)
+coste_total = sub_optico + sub_civil
+
+# Cálculo de Mangueras
+CALIBRES_COMERCIALES = [2, 4, 8, 16, 24, 48, 64, 96, 128, 256]
+def obtener_calibre_comercial(n_fibras):
+    if pd.isna(n_fibras) or n_fibras <= 0: return 2
+    for calibre in CALIBRES_COMERCIALES:
+        if n_fibras <= calibre: return calibre
+    return CALIBRES_COMERCIALES[-1]
+
+filas_mangueras_html = ""
+if not red_fisica.empty:
+    if 'total_fibras' not in red_fisica.columns:
+        red_fisica['total_fibras'] = 1
+    
+    red_fisica['Manguera_Comercial'] = red_fisica['total_fibras'].apply(obtener_calibre_comercial)
+    df_mangueras = red_fisica.groupby('Manguera_Comercial').agg(Total_Metros=('geometry', lambda x: x.length.sum())).reset_index()
+    
+    for _, row in df_mangueras.iterrows():
+        filas_mangueras_html += f"<tr><td>Manguera de {int(row['Manguera_Comercial'])} Fibras</td><td class='num'>{round(row['Total_Metros'], 2)} m</td></tr>\n"
+else:
+    filas_mangueras_html = "<tr><td colspan='2'>No hay datos de red física.</td></tr>"
 
 
-# --- 4. GENERACIÓN DEL HTML CORPORATIVO ---
+# --- 4. CONSTRUCCIÓN DEL HTML ---
 print("Ensamblando documento web...")
 ruta_html = directorio_base / f"{Path(rutas['geojson']).stem}_informe_tecnico.html"
 
@@ -145,7 +176,8 @@ css_styles = """
     th { background-color: var(--bg-light); color: var(--text-main); font-weight: 600; }
     tr:hover { background-color: #f5f7fa; }
     td.num { text-align: right; font-family: monospace; font-size: 1rem; }
-    tr.total-row { font-weight: bold; background-color: #eef2f5; border-top: 2px solid #ccc; }
+    tr.subtotal-row { font-weight: 600; background-color: #f8f9fa; border-top: 1px solid #ccc; color: #555; }
+    tr.total-row { font-weight: bold; background-color: #eef2f5; border-top: 2px solid #ccc; font-size: 1.1rem; }
     .img-container { margin: 30px 0; page-break-inside: avoid; }
     img.map-render { width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .img-caption { text-align: center; font-size: 0.9rem; color: #666; margin-top: 10px; font-weight: 500; }
@@ -181,12 +213,12 @@ html_content = f"""<!DOCTYPE html>
             <div class="metric-value">{round(fibra_total, 2)} m</div>
         </div>
         <div class="metric-card" style="border-left-color: #28a745;">
-            <div class="metric-title">Inversión Material (CAPEX)</div>
+            <div class="metric-title">Inversión (CAPEX)</div>
             <div class="metric-value">{round(coste_total, 2):,} €</div>
         </div>
     </div>
     
-    <h2>2. Métricas de Topología e Infraestructura</h2>
+    <h2>2. Métricas de Topología y Atenuación Óptica</h2>
     <table>
         <thead>
             <tr><th>Elemento de Red</th><th style="text-align: right;">Métrica</th></tr>
@@ -194,56 +226,46 @@ html_content = f"""<!DOCTYPE html>
         <tbody>
             <tr><td>Longitud Fibra Troncal (Alimentación)</td><td class="num">{round(fibra_troncal, 2)} m</td></tr>
             <tr><td>Longitud Fibra Acceso (Dispersión)</td><td class="num">{round(fibra_acceso, 2)} m</td></tr>
-            <tr><td>Cajas de Empalme / Torpedos</td><td class="num">{int(cant_empalmes)} ud</td></tr>
-            <tr><td>Distancia Media al Hogar (OLT -> Portal)</td><td class="num">{round(dist_media, 2)} m</td></tr>
-            <tr><td>Distancia Máxima de Atenuación (Peor Caso)</td><td class="num">{round(dist_max, 2)} m</td></tr>
-            <tr><td>Distancia Mínima (Mejor Caso)</td><td class="num">{round(dist_min, 2)} m</td></tr>
+            <tr><td>Distancia Máxima de Enlace (Peor Caso)</td><td class="num">{round(dist_max, 2)} m</td></tr>
+            <tr><td>Distancia Mínima de Enlace (Mejor Caso)</td><td class="num">{round(dist_min, 2)} m</td></tr>
+            <tr class="subtotal-row"><td>Atenuación Estimada Máxima</td><td class="num" style="color: #c0392b;">{round(atenuacion_max, 2)} dB</td></tr>
+            <tr class="subtotal-row"><td>Atenuación Estimada Media</td><td class="num" style="color: #0056b3;">{round(atenuacion_media, 2)} dB</td></tr>
         </tbody>
     </table>
-    
-    <h2>3. Presupuesto Desglosado de Materiales</h2>
+
+    <h2>3. Lista de Compra: Mangueras Comerciales</h2>
     <table>
         <thead>
-            <tr>
-                <th>Concepto</th>
-                <th style="text-align: right;">Cantidad</th>
-                <th style="text-align: right;">Precio Unit.</th>
-                <th style="text-align: right;">Subtotal</th>
-            </tr>
+            <tr><th>Tipo de Cable</th><th style="text-align: right;">Longitud Necesaria</th></tr>
         </thead>
         <tbody>
-            <tr>
-                <td>Cableado de Fibra Óptica</td>
-                <td class="num">{round(cant_fibra, 2)} m</td>
-                <td class="num">{precio_fibra} €</td>
-                <td class="num">{round(sub_fibra, 2):,} €</td>
-            </tr>
-            <tr>
-                <td>Cajas Terminales Ópticas (CTO)</td>
-                <td class="num">{int(cant_ctos)} ud</td>
-                <td class="num">{precio_cto} €</td>
-                <td class="num">{round(sub_cto, 2):,} €</td>
-            </tr>
-            <tr>
-                <td>Cajas de Empalme de Mazo</td>
-                <td class="num">{int(cant_empalmes)} ud</td>
-                <td class="num">{precio_empalme} €</td>
-                <td class="num">{round(sub_empalme, 2):,} €</td>
-            </tr>
-            <tr>
-                <td>Kits de Conectorización y Roseta</td>
-                <td class="num">{int(cant_conectores)} ud</td>
-                <td class="num">{precio_conector} €</td>
-                <td class="num">{round(sub_conector, 2):,} €</td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="3">TOTAL INVERSIÓN MATERIAL (SIN IVA)</td>
-                <td class="num" style="color: #0056b3;">{round(coste_total, 2):,} €</td>
-            </tr>
+            {filas_mangueras_html}
         </tbody>
     </table>
     
-    <h2>4. Anexos Cartográficos</h2>
+    <h2>4. Presupuesto Desglosado por Fase Constructiva</h2>
+    <table>
+        <thead>
+            <tr><th>Concepto</th><th style="text-align: right;">Cantidad</th><th style="text-align: right;">Precio Unit.</th><th style="text-align: right;">Subtotal</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Cableado Fibra Óptica (Promedio)</td><td class="num">{round(cant_fibra, 2)} m</td><td class="num">{precio_fibra} €</td><td class="num">{round(cant_fibra * precio_fibra, 2):,} €</td></tr>
+            <tr><td>Cajas Terminales Ópticas (CTO)</td><td class="num">{int(cant_ctos)} ud</td><td class="num">{precio_cto} €</td><td class="num">{round(cant_ctos * precio_cto, 2):,} €</td></tr>
+            <tr><td>Cajas de Empalme de Mazo</td><td class="num">{int(cant_empalmes)} ud</td><td class="num">{precio_empalme} €</td><td class="num">{round(cant_empalmes * precio_empalme, 2):,} €</td></tr>
+            <tr><td>Kits de Conectorización y Roseta</td><td class="num">{int(cant_conectores)} ud</td><td class="num">{precio_conector} €</td><td class="num">{round(cant_conectores * precio_conector, 2):,} €</td></tr>
+            <tr class="subtotal-row"><td colspan="3">SUBTOTAL MATERIAL ÓPTICO</td><td class="num">{round(sub_optico, 2):,} €</td></tr>
+            
+            <tr><td>Obra Civil: Tendido Aéreo (Postes)</td><td class="num">{round(cant_aereo, 2)} m</td><td class="num">{precio_aereo} €</td><td class="num">{round(cant_aereo * precio_aereo, 2):,} €</td></tr>
+            <tr><td>Obra Civil: Zanja (Soterrado)</td><td class="num">{round(cant_zanja, 2)} m</td><td class="num">{precio_zanja} €</td><td class="num">{round(cant_zanja * precio_zanja, 2):,} €</td></tr>
+            <tr><td>Obra Civil: Canalización Existente</td><td class="num">{round(cant_existente, 2)} m</td><td class="num">{precio_existente} €</td><td class="num">{round(cant_existente * precio_existente, 2):,} €</td></tr>
+            <tr><td>Obra Civil: Despliegue en Fachada</td><td class="num">{round(cant_fachada, 2)} m</td><td class="num">{precio_fachada} €</td><td class="num">{round(cant_fachada * precio_fachada, 2):,} €</td></tr>
+            <tr class="subtotal-row"><td colspan="3">SUBTOTAL OBRA CIVIL</td><td class="num">{round(sub_civil, 2):,} €</td></tr>
+            
+            <tr class="total-row"><td colspan="3">TOTAL INVERSIÓN GLOBAL (CAPEX)</td><td class="num" style="color: #0056b3;">{round(coste_total, 2):,} €</td></tr>
+        </tbody>
+    </table>
+    
+    <h2>5. Anexos Cartográficos</h2>
     <div class="img-container">
         <img src="area_despliegue.png" alt="Área de Despliegue" class="map-render">
         <div class="img-caption">Figura 1: Área de despliegue y viviendas afectadas</div>
@@ -257,8 +279,12 @@ html_content = f"""<!DOCTYPE html>
         <div class="img-caption">Figura 3: Acceso lógico y áreas de influencia por CTO</div>
     </div>
     <div class="img-container">
-        <img src="obra_civil.png" alt="Obra Civil" class="map-render">
-        <div class="img-caption">Figura 4: Obra civil e infraestructura física (mapa de calor por densidad de fibra)</div>
+        <img src="obra_civil.png" alt="Obra Civil Densidad" class="map-render">
+        <div class="img-caption">Figura 4: Densidad de fibra e infraestructura física compartida</div>
+    </div>
+    <div class="img-container">
+        <img src="tipos_instalacion.png" alt="Tipos Instalación" class="map-render">
+        <div class="img-caption">Figura 5: Métodos constructivos de la red física (Aéreo, Zanja, Existente, Fachada)</div>
     </div>
 </body>
 </html>
@@ -267,4 +293,4 @@ html_content = f"""<!DOCTYPE html>
 with open(ruta_html, 'w', encoding='utf-8') as f:
     f.write(html_content)
 
-print(f"✅ Informe corporativo completado exitosamente: {ruta_html}")
+print(f"✅ Informe maestro generado con éxito: {ruta_html}")

@@ -1,95 +1,17 @@
-# 🌐 Planificador Automatizado de Redes FTTH
+# ⚡ FTTH-Optimizer: Engine de Diseño y Despliegue de Fibra Óptica
 
-Un motor de diseño lógico y físico para redes de fibra óptica hasta el hogar (FTTH). Esta herramienta automatiza el flujo de trabajo completo de la ingeniería de planta externa (OSP), desde la adquisición topográfica hasta el cálculo dinámico del presupuesto óptico, minimizando el despliegue de cableado y optimizando los recursos.
+Este ecosistema de herramientas automatiza el ciclo de vida completo de un proyecto de ingeniería de planta externa (OSP), transformando un polígono de actuación en un diseño técnico ejecutable con balance óptico y presupuesto detallado. El motor principal se encarga de la captura de demanda real mediante servicios WFS del Catastro para obtener portales y edificios, eliminando la necesidad de digitalización manual. La inteligencia del sistema reside en su capacidad para enrutar sobre grafos viales reales extraídos de OpenStreetMap, garantizando que el despliegue siga el trazado de las calles y no líneas rectas teóricas que no se pueden construir.
 
----
+**Fases de la Ingeniería Automatizada**
 
-## 🚀 Características Principales
+**Fase 0: Captura y Clustering.** El proceso arranca con la lectura del área de diseño y la ubicación de la OLT desde un GeoJSON, descargando automáticamente los puntos de demanda y agrupándolos en clústeres de Cajas Terminales Ópticas (CTO) mediante algoritmos espaciales, topológicos o de Voronoi. **Fase 1: Ajuste Geométrico.** En lugar de dejar las CTOs en puntos genéricos, el sistema las proyecta sobre los vértices del trazado vial para minimizar el metraje de las acometidas privadas, optimizando la posición en centros de carga reales. **Fase 2: Infraestructura Física.** Se calcula el árbol de distribución completo, identificando dónde deben ir las cajas de empalme o torpedos mediante el análisis de bifurcaciones y sangrados del mazo de fibras. **Fase 3: Modelo de Datos y Costes.** Toda la geometría se traduce en una hoja de cálculo paramétrica que calcula la atenuación de cada portal considerando pérdidas por distancia, splitters y fusiones, además de generar el CAPEX del proyecto. **Fase 4: Reporting Maestro.** Como cierre, se genera un informe técnico en HTML con mapas de densidad de fibra y métodos constructivos (aéreo, fachada, canalización o zanja).
 
-* **Integración Catastral Automática:** Conexión directa con el servicio WFS del Catastro para la extracción de portales y unidades inmobiliarias.
-* **Topología Real (OSMnx):** Extracción y enrutamiento sobre el grafo vial real extraído de OpenStreetMap, diferenciando nodos topológicos de vértices geométricos.
-* **Detección Inteligente de Empalmes:** Identificación autónoma de puntos de bifurcación y sangrado de mazo topológico para la ubicación precisa de cajas de empalme/torpedos.
-* **Cálculo de Atenuación Dinámico:** Generación de un libro Excel nativo con tablas de datos y fórmulas paramétricas inyectadas para el cálculo del balance óptico en tiempo real.
-* **Salida GIS Preparada:** Generación de archivos GeoPackage (.gpkg) limpios y versionados, listos para su edición e inspección visual en QGIS.
+**Estructura del Proyecto y Módulos Técnicos**
 
----
+El código se organiza en una carpeta de aplicación que separa los scripts de ejecución secuencial de la lógica de negocio. Los archivos **agrupacion.py** y **enrutamiento.py** gestionan los cálculos pesados de red y grafos, mientras que **datos.py** y **viales.py** se encargan de la comunicación con APIs externas y el preprocesamiento geográfico. Los resultados se centralizan en un directorio de salida organizado por fases, donde cada una genera un archivo GeoPackage (.gpkg) versionado que permite la inspección visual en QGIS sin perder la trazabilidad de los cambios realizados en pasos anteriores.
 
-## 🏗️ Arquitectura y Fases del Despliegue
+**Ejecución y Resultados Finales**
 
-El sistema está orquestado en cuatro fases secuenciales independientes, lo que permite la intervención manual o la revisión técnica entre cada paso sin romper el flujo de trabajo.
+Para lanzar el flujo completo basta con ejecutar el orquestador principal, el cual encadena las cinco fases de forma desatendida. Al finalizar, el ingeniero dispone de un inventario detallado de mangueras comerciales por calibre (desde 2 hasta 256 fibras), un presupuesto desglosado por unidades de obra y un set de mapas técnicos que cubren desde la red de alimentación hasta la dispersión final. Este enfoque reduce drásticamente el tiempo de diseño y asegura que el presupuesto óptico sea realista antes de enviar a las contratas a campo.
 
-### Fase 0: Adquisición y Agrupación (`000-obtencion-datos.py`)
-Lee el polígono de diseño base y la central OLT desde un archivo GeoJSON. Extrae la cartografía vial, descarga los portales y ejecuta algoritmos de *clustering* paramétrico (espacial, topológico o de Voronoi) para definir las áreas de influencia geométrica de cada Caja Terminal Óptica (CTO).
-
-### Fase 1: Optimización Geométrica (`001-optimizar-ctos.py`)
-Abandona los cruces de calles estrictos para proyectar matemáticamente la posición de las CTOs sobre el trazado asfáltico (vértices geométricos). Ubica la CTO en el centro de carga de la calle curva o segmento lineal para minimizar los metros totales de acometidas privadas.
-
-### Fase 2: Obra Civil y Enrutamiento (`002-obra-civil.py`)
-Despliega el árbol de distribución. Calcula las rutas de menor esfuerzo desde la OLT hasta los clústeres (red troncal) y desde las CTOs a los portales (red de dispersión). Analiza el flujo de las fibras por la red para plantar cajas de empalme donde el cable físico se divide.
-
-### Fase 3: Presupuesto Óptico (`003-exportar-hoja-de-calculo.py`)
-Consolida las métricas espaciales en un modelo de datos estructurado. Exporta un Excel paramétrico que evalúa la atenuación extrema a extremo teniendo en cuenta longitud de fibra, conectores, pérdidas teóricas por splitters (según altas potenciales) y saltos de empalme.
-
-A parte se ofrece la opción de ejecutar todo el proyecto a la vez para pruebas iniciales.
-
----
-
-## 📂 Estructura del Proyecto
-
-```text
-📦 Planificador-FTTH
- ┣ 📂 app
- ┃ ┣ 📜 00-despliegue-completo.py     # Orquestador principal
- ┃ ┣ 📜 001-obtencion-datos.py        # Adquisición y clustering
- ┃ ┣ 📜 002-optimizar-ctos.py         # Ajuste geométrico de nodos
- ┃ ┣ 📜 003-obra-civil.py             # Enrutamiento de planta externa
- ┃ ┣ 📜 004-exportar-hoja-de-calculo.py # Generador del modelo Excel
- ┃ ┣ 📜 agrupacion.py
- ┃ ┣ 📜 datos.py
- ┃ ┣ 📜 enrutamiento.py
- ┃ ┣ 📜 entorno.py                    # Gestor de rutas dinámico
- ┃ ┗ 📜 viales.py
- ┣ 📂 out                             # Directorio autogenerado de resultados
- ┃ ┗ 📂 [nombre_proyecto]
- ┃   ┣ 🗺️ [nombre]_00_datos.gpkg
- ┃   ┣ 🗺️ [nombre]_01_ctos.gpkg
- ┃   ┣ 🗺️ [nombre]_02_obra.gpkg
- ┃   ┗ 📊 [nombre]_resumen.xlsx
- ┣ 📜 config.json                     # Parámetros de diseño del despliegue
- ┗ 📜 README.md
-```
-
----
-
-## 💻 Requisitos e Instalación
-
-El proyecto requiere Python 3.9 o superior y un entorno virtual configurado con librerías de análisis geoespacial.
-
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/alvaroferndz/HerramientaFibra.git
-   cd HerramientaFibra
-   ```
-2. Crea y activa tu entorno virtual:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # En Windows: .venv\Scripts\activate
-   ```
-3. Instala las dependencias core:
-   ```bash
-   pip install requirements.txt
-   ```
-
----
-
-## ⚙️ Uso Básico
-
-1. Configura tu polígono de actuación guardando un polígono y un punto (la OLT) en un archivo `.geojson`.
-2. Actualiza la ruta en `config.json`.
-3. Ejecuta el orquestador general para lanzar todas las fases en cadena y generar un proyecto desde cero:
-
-```bash
-python app/00-despliegue-completo.py
-```
-
-*Nota: Si prefieres ajustar manualmente las posiciones topológicas en QGIS, puedes ejecutar los scripts secuencialmente. Guarda tus cambios en el `.gpkg` de la fase correspondiente antes de lanzar el siguiente script.*
+http://googleusercontent.com/interactive_content_block/0

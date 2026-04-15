@@ -20,7 +20,8 @@
     th { background-color: var(--bg-light); color: var(--text-main); font-weight: 600; }
     tr:hover { background-color: #f5f7fa; }
     td.num { text-align: right; font-family: monospace; font-size: 1rem; }
-    tr.total-row { font-weight: bold; background-color: #eef2f5; border-top: 2px solid #ccc; }
+    tr.subtotal-row { font-weight: 600; background-color: #f8f9fa; border-top: 1px solid #ccc; color: #555; }
+    tr.total-row { font-weight: bold; background-color: #eef2f5; border-top: 2px solid #ccc; font-size: 1.1rem; }
     .img-container { margin: 30px 0; page-break-inside: avoid; }
     img.map-render { width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .img-caption { text-align: center; font-size: 0.9rem; color: #666; margin-top: 10px; font-weight: 500; }
@@ -49,12 +50,12 @@
             <div class="metric-value">84658.67 m</div>
         </div>
         <div class="metric-card" style="border-left-color: #28a745;">
-            <div class="metric-title">Inversión Material (CAPEX)</div>
-            <div class="metric-value">129,454.56 €</div>
+            <div class="metric-title">Inversión (CAPEX)</div>
+            <div class="metric-value">327,650.7 €</div>
         </div>
     </div>
     
-    <h2>2. Métricas de Topología e Infraestructura</h2>
+    <h2>2. Métricas de Topología y Atenuación Óptica</h2>
     <table>
         <thead>
             <tr><th>Elemento de Red</th><th style="text-align: right;">Métrica</th></tr>
@@ -62,56 +63,54 @@
         <tbody>
             <tr><td>Longitud Fibra Troncal (Alimentación)</td><td class="num">23262.42 m</td></tr>
             <tr><td>Longitud Fibra Acceso (Dispersión)</td><td class="num">61396.25 m</td></tr>
-            <tr><td>Cajas de Empalme / Torpedos</td><td class="num">27 ud</td></tr>
-            <tr><td>Distancia Media al Hogar (OLT -> Portal)</td><td class="num">878.31 m</td></tr>
-            <tr><td>Distancia Máxima de Atenuación (Peor Caso)</td><td class="num">1833.68 m</td></tr>
-            <tr><td>Distancia Mínima (Mejor Caso)</td><td class="num">154.25 m</td></tr>
+            <tr><td>Distancia Máxima de Enlace (Peor Caso)</td><td class="num">1833.68 m</td></tr>
+            <tr><td>Distancia Mínima de Enlace (Mejor Caso)</td><td class="num">154.25 m</td></tr>
+            <tr class="subtotal-row"><td>Atenuación Estimada Máxima</td><td class="num" style="color: #c0392b;">21.57 dB</td></tr>
+            <tr class="subtotal-row"><td>Atenuación Estimada Media</td><td class="num" style="color: #0056b3;">19.86 dB</td></tr>
         </tbody>
     </table>
-    
-    <h2>3. Presupuesto Desglosado de Materiales</h2>
+
+    <h2>3. Lista de Compra: Mangueras Comerciales</h2>
     <table>
         <thead>
-            <tr>
-                <th>Concepto</th>
-                <th style="text-align: right;">Cantidad</th>
-                <th style="text-align: right;">Precio Unit.</th>
-                <th style="text-align: right;">Subtotal</th>
-            </tr>
+            <tr><th>Tipo de Cable</th><th style="text-align: right;">Longitud Necesaria</th></tr>
         </thead>
         <tbody>
-            <tr>
-                <td>Cableado de Fibra Óptica</td>
-                <td class="num">85541.3 m</td>
-                <td class="num">1.2 €</td>
-                <td class="num">102,649.56 €</td>
-            </tr>
-            <tr>
-                <td>Cajas Terminales Ópticas (CTO)</td>
-                <td class="num">31 ud</td>
-                <td class="num">150 €</td>
-                <td class="num">4,650.0 €</td>
-            </tr>
-            <tr>
-                <td>Cajas de Empalme de Mazo</td>
-                <td class="num">27 ud</td>
-                <td class="num">85 €</td>
-                <td class="num">2,295.0 €</td>
-            </tr>
-            <tr>
-                <td>Kits de Conectorización y Roseta</td>
-                <td class="num">1324 ud</td>
-                <td class="num">15 €</td>
-                <td class="num">19,860.0 €</td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="3">TOTAL INVERSIÓN MATERIAL (SIN IVA)</td>
-                <td class="num" style="color: #0056b3;">129,454.56 €</td>
-            </tr>
+            <tr><td>Manguera de 2 Fibras</td><td class='num'>14789.21 m</td></tr>
+<tr><td>Manguera de 4 Fibras</td><td class='num'>3569.88 m</td></tr>
+<tr><td>Manguera de 8 Fibras</td><td class='num'>2823.34 m</td></tr>
+<tr><td>Manguera de 16 Fibras</td><td class='num'>3809.41 m</td></tr>
+<tr><td>Manguera de 24 Fibras</td><td class='num'>885.1 m</td></tr>
+<tr><td>Manguera de 48 Fibras</td><td class='num'>505.26 m</td></tr>
+<tr><td>Manguera de 64 Fibras</td><td class='num'>0.0 m</td></tr>
+<tr><td>Manguera de 96 Fibras</td><td class='num'>0.0 m</td></tr>
+
         </tbody>
     </table>
     
-    <h2>4. Anexos Cartográficos</h2>
+    <h2>4. Presupuesto Desglosado por Fase Constructiva</h2>
+    <table>
+        <thead>
+            <tr><th>Concepto</th><th style="text-align: right;">Cantidad</th><th style="text-align: right;">Precio Unit.</th><th style="text-align: right;">Subtotal</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Cableado Fibra Óptica (Promedio)</td><td class="num">84658.67 m</td><td class="num">0.05 €</td><td class="num">4,232.93 €</td></tr>
+            <tr><td>Cajas Terminales Ópticas (CTO)</td><td class="num">30 ud</td><td class="num">15 €</td><td class="num">450 €</td></tr>
+            <tr><td>Cajas de Empalme de Mazo</td><td class="num">27 ud</td><td class="num">20 €</td><td class="num">540 €</td></tr>
+            <tr><td>Kits de Conectorización y Roseta</td><td class="num">1324 ud</td><td class="num">15 €</td><td class="num">19,860 €</td></tr>
+            <tr class="subtotal-row"><td colspan="3">SUBTOTAL MATERIAL ÓPTICO</td><td class="num">25,082.93 €</td></tr>
+            
+            <tr><td>Obra Civil: Tendido Aéreo (Postes)</td><td class="num">9808.15 m</td><td class="num">8.5 €</td><td class="num">83,369.25 €</td></tr>
+            <tr><td>Obra Civil: Zanja (Soterrado)</td><td class="num">8172.03 m</td><td class="num">25 €</td><td class="num">204,300.79 €</td></tr>
+            <tr><td>Obra Civil: Canalización Existente</td><td class="num">1906.33 m</td><td class="num">1 €</td><td class="num">1,906.33 €</td></tr>
+            <tr><td>Obra Civil: Despliegue en Fachada</td><td class="num">6495.7 m</td><td class="num">2 €</td><td class="num">12,991.4 €</td></tr>
+            <tr class="subtotal-row"><td colspan="3">SUBTOTAL OBRA CIVIL</td><td class="num">302,567.76 €</td></tr>
+            
+            <tr class="total-row"><td colspan="3">TOTAL INVERSIÓN GLOBAL (CAPEX)</td><td class="num" style="color: #0056b3;">327,650.7 €</td></tr>
+        </tbody>
+    </table>
+    
+    <h2>5. Anexos Cartográficos</h2>
     <div class="img-container">
         <img src="area_despliegue.png" alt="Área de Despliegue" class="map-render">
         <div class="img-caption">Figura 1: Área de despliegue y viviendas afectadas</div>
@@ -125,8 +124,12 @@
         <div class="img-caption">Figura 3: Acceso lógico y áreas de influencia por CTO</div>
     </div>
     <div class="img-container">
-        <img src="obra_civil.png" alt="Obra Civil" class="map-render">
-        <div class="img-caption">Figura 4: Obra civil e infraestructura física (mapa de calor por densidad de fibra)</div>
+        <img src="obra_civil.png" alt="Obra Civil Densidad" class="map-render">
+        <div class="img-caption">Figura 4: Densidad de fibra e infraestructura física compartida</div>
+    </div>
+    <div class="img-container">
+        <img src="tipos_instalacion.png" alt="Tipos Instalación" class="map-render">
+        <div class="img-caption">Figura 5: Métodos constructivos de la red física (Aéreo, Zanja, Existente, Fachada)</div>
     </div>
 </body>
 </html>
