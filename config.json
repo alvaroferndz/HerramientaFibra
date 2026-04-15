@@ -1,8 +1,8 @@
 {
     "proyecto": {
-        "archivo_qgis": "./out/pancar.gpkg",
+        "archivo_qgis": "./out/pancar_auto.gpkg",
         "srs": "EPSG:25830",
-        "ruta_geojson": "./areas_cobertura/pancar.geojson"
+        "ruta_geojson": "./areas_cobertura/pancar_manual.geojson"
     },
     "parametros": {
         "agrupacion": {

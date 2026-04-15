@@ -6,7 +6,8 @@ def ejecutar_flujo_completo():
         "app/001-obtencion-datos.py",
         "app/002-optimizar-ctos.py",
         "app/003-obra-civil.py",
-        "app/004-exportar-hoja-de-calculo.py"
+        "app/004-exportar-hoja-de-calculo.py",
+        "app/005-informe.py"
     ]
 
     for script in scripts:
